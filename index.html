@@ -2,41 +2,49 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8" />
-<title>Third Person Game</title>
+<title>Third Person GLB Debug Game</title>
 <style>
-  body { margin: 0; overflow: hidden; }
-  canvas { display: block; }
+  body { margin: 0; overflow: hidden; background: black; }
+  #info {
+    position: absolute;
+    color: white;
+    font-family: monospace;
+    padding: 10px;
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
+
+<div id="info">Loading...</div>
 
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
 import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 
-// SCENE
+const info = document.getElementById("info");
+
+// Szene
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 
-// CAMERA
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
+// Kamera
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+camera.position.set(0, 3, 6);
 
-// RENDERER
+// Renderer
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LIGHT
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5, 10, 5);
-scene.add(light);
+// Licht (WICHTIG)
+scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
-// GROUND
+const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+dirLight.position.set(5, 10, 5);
+scene.add(dirLight);
+
+// Boden
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(200, 200),
   new THREE.MeshStandardMaterial({ color: 0x228822 })
@@ -44,38 +52,58 @@ const ground = new THREE.Mesh(
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
 
-// PLAYER GROUP
+// Testwürfel (zeigt ob Engine läuft)
+const testCube = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshBasicMaterial({ color: "red" })
+);
+testCube.position.set(2, 1, 0);
+scene.add(testCube);
+
+// Player Container
 const player = new THREE.Group();
 scene.add(player);
 
-// LOAD MODEL (1.glb)
+// Kamera Offset
+const offset = new THREE.Vector3(0, 3, 6);
+
+// Loader
 const loader = new GLTFLoader();
 
-let model;
+info.innerText = "Lade 1.glb ...";
 
-loader.load("1.glb", (gltf) => {
-  model = gltf.scene;
-  model.scale.set(1, 1, 1);
-  player.add(model);
-});
+// 🔥 GLB LADEN
+loader.load(
+  "./1.glb",
 
-// START POSITION
-player.position.set(0, 0, 0);
+  (gltf) => {
+    const model = gltf.scene;
+    model.scale.set(1, 1, 1);
+    player.add(model);
 
-// MOVEMENT
+    info.innerText = "✔ 1.glb geladen!";
+    console.log("GLB geladen");
+  },
+
+  (progress) => {
+    info.innerText = "Loading: " + Math.round((progress.loaded / progress.total) * 100) + "%";
+  },
+
+  (error) => {
+    console.error(error);
+    info.innerText = "❌ FEHLER: 1.glb nicht gefunden!";
+  }
+);
+
+// Movement
 const keys = {};
+addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-window.addEventListener("keydown", (e) => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", (e) => keys[e.key.toLowerCase()] = false);
-
-// CAMERA OFFSET (Third Person)
-const cameraOffset = new THREE.Vector3(0, 3, 6);
-
-// GAME LOOP
+// Loop
 function animate() {
   requestAnimationFrame(animate);
 
-  // MOVEMENT
   const speed = 0.1;
 
   if (keys["w"]) player.position.z -= speed;
@@ -83,9 +111,8 @@ function animate() {
   if (keys["a"]) player.position.x -= speed;
   if (keys["d"]) player.position.x += speed;
 
-  // Kamera folgt Spieler
-  const camPos = player.position.clone().add(cameraOffset);
-  camera.position.lerp(camPos, 0.1);
+  const camPos = player.position.clone().add(offset);
+  camera.position.lerp(camPos, 0.08);
   camera.lookAt(player.position);
 
   renderer.render(scene, camera);
@@ -93,11 +120,11 @@ function animate() {
 
 animate();
 
-// RESIZE
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+// Resize
+addEventListener("resize", () => {
+  camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(innerWidth, innerHeight);
 });
 </script>
 
